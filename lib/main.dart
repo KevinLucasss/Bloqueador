@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'apps_page.dart';
 
 void main() => runApp(const BloqueadorApp());
 
@@ -459,19 +460,35 @@ class _HomePageState extends State<HomePage> {
               style: TextStyle(fontSize: 12, color: Colors.white60),
             ),
             const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: _accOn
-                  ? const SizedBox.shrink()
-                  : FilledButton.tonal(
-                      onPressed: () async {
-                        await _ch.invokeMethod('openAccessibilitySettings');
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Ative "Bloqueador Familiar" na lista de serviços de acessibilidade.')),
-                        );
-                      },
-                      child: const Text('Ativar bloqueio de apps'),
+            Row(
+              children: [
+                Expanded(
+                  child: _accOn
+                      ? const SizedBox.shrink()
+                      : FilledButton.tonal(
+                          onPressed: () async {
+                            await _ch.invokeMethod('openAccessibilitySettings');
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Ative "Bloqueador Familiar" na lista de serviços de acessibilidade.')),
+                              );
+                            }
+                          },
+                          child: const Text('Ativar'),
+                        ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AppsPage()),
                     ),
+                    icon: const Icon(Icons.apps, size: 16),
+                    label: const Text('Escolher apps'),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

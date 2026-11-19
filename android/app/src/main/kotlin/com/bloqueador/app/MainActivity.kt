@@ -88,6 +88,17 @@ class MainActivity : FlutterActivity() {
                     "vpnError" -> result.success(BlockerVpnService.lastError)
                     "dnsSeen" -> result.success(BlockerVpnService.dnsSeen.get())
                     "activeDns" -> result.success(BlockerVpnService.activeDnsServers)
+                    "installedApps" -> result.success(installedApps())
+                    "userBlockedApps" -> result.success(
+                        prefs.getStringSet(AdultAppBlockerService.KEY_USER_BLOCKED, emptySet())?.toList() ?: emptyList<String>()
+                    )
+                    "setUserBlockedApps" -> {
+                        val apps = call.argument<List<String>>("apps") ?: emptyList()
+                        prefs.edit().putStringSet(
+                            AdultAppBlockerService.KEY_USER_BLOCKED, apps.toSet()
+                        ).apply()
+                        result.success(true)
+                    }
                     "stats" -> result.success(mapOf(
                         "running" to BlockerVpnService.running,
                         "blocked" to BlockerVpnService.blockedCount.get(),
@@ -130,6 +141,45 @@ class MainActivity : FlutterActivity() {
             } else {
                 r?.success("denied")
             }
+        }
+    }
+
+    private fun installedApps(): List<Map<String, String>> {
+        val pm = packageManager
+        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+        val resolves = if (android.os.Build.VERSION.SDK_INT >= 33) {
+            pm.queryIntentActivities(intent, android.content.pm.PackageManager.ResolveInfoFlags.of(0))
+        } else {
+            @Suppress("DEPRECATION")
+            pm.queryIntentActivities(intent, 0)
+        }
+        return resolves.mapNotNull { ri ->
+            val pkg = ri.activityInfo?.packageName ?: return@mapNotNull null
+            if (pkg == packageName) return@mapNotNull null
+            val label = ri.loadLabel(pm)?.toString() ?: pkg
+            mapOf("pkg" to pkg, "label" to label, "category" to categorize(pkg, label))
+        }.sortedBy { it["label"] }
+    }
+
+    private fun categorize(pkg: String, label: String): String {
+        val t = "$pkg $label".lowercase()
+        fun has(vararg kws: String) = kws.any { t.contains(it) }
+        return when {
+            has("porn", "xvideos", "xnxx", "xhamster", "onlyfans", "fansly",
+                "chaturbate", "stripchat", "bongacams", "nhentai", "hentai",
+                "redtube", "youporn", "spankbang", "erome", "rule34",
+                "adulto", "putaria", "sexo", "cam4", "myfreecams", "livejasmin") -> "adulto"
+            has("zoom", "meet", "teams", "webex", "skype", "jitsi", "duo",
+                "videochamada", "facetime", "whereby") -> "videochamada"
+            has("whatsapp", "telegram", "messenger", "signal", "viber", "imo",
+                "wechat", "line", "kik", "snapchat") -> "mensagens"
+            has("facebook", "instagram", "tiktok", "twitter", "threads",
+                "pinterest", "reddit", "linkedin", "kwai", "likee") -> "redes"
+            has("youtube", "netflix", "twitch", "disney", "primevideo",
+                "globoplay", "crunchyroll", "spotify", "deezer") -> "streaming"
+            has("jogo", "game", "pubg", "freefire", "roblox", "minecraft",
+                "clash", "brawl", "genshin", "candycrush") -> "jogos"
+            else -> "outros"
         }
     }
 

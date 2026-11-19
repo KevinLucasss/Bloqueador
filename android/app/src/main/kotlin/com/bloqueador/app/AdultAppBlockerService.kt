@@ -17,6 +17,7 @@ class AdultAppBlockerService : AccessibilityService() {
         const val TAG = "AdultBlocker"
         const val PREFS = "blocker_prefs"
         const val KEY_APP_BLOCKS = "app_blocked_count"
+        const val KEY_USER_BLOCKED = "user_blocked_apps"
 
         // Pacotes conhecidos de apps adultos/imorais/chocantes
         val BLOCKED_APPS = hashSetOf(
@@ -60,7 +61,8 @@ class AdultAppBlockerService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         val pkg = event.packageName?.toString() ?: return
-        if (BLOCKED_APPS.contains(pkg)) {
+        val userBlocked = prefs?.getStringSet(KEY_USER_BLOCKED, emptySet()) ?: emptySet()
+        if (BLOCKED_APPS.contains(pkg) || userBlocked.contains(pkg)) {
             val count = (prefs?.getInt(KEY_APP_BLOCKS, 0) ?: 0) + 1
             prefs?.edit()?.putInt(KEY_APP_BLOCKS, count)?.apply()
             Log.i(TAG, "APP BLOQUEADO: $pkg (#$count)")
