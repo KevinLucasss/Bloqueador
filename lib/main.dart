@@ -376,9 +376,31 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(height: 6),
             const Text(
-              'Se alguém tentar desligar a proteção ou errar o PIN, um parente ou amigo é avisado na hora. '
-              'Para receber: instale o app "ntfy" no celular dele e assine o mesmo tópico abaixo.',
+              'Se alguém tentar desligar a proteção ou errar o PIN, um parente ou amigo é avisado na hora.',
               style: TextStyle(fontSize: 12, color: Colors.white60, height: 1.4),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('COMO CONFIGURAR:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white70, letterSpacing: 0.5)),
+                  SizedBox(height: 4),
+                  Text('1. Aqui: invente um tópico secreto (ex: bloqueador-x7k2p9) e salve', style: TextStyle(fontSize: 11, color: Colors.white60, height: 1.5)),
+                  Text('2. No celular do parente: instale o app "ntfy" (grátis, Play Store)', style: TextStyle(fontSize: 11, color: Colors.white60, height: 1.5)),
+                  Text('3. No ntfy: assine o MESMO tópico — pronto, os alertas chegam como notificação', style: TextStyle(fontSize: 11, color: Colors.white60, height: 1.5)),
+                  SizedBox(height: 6),
+                  Text('⚠️ O tópico é a "senha" do canal: não compartilhe. '
+                      'O alerta precisa de internet no aparelho bloqueado. '
+                      'Adolescente determinado pode tentar forçar o PIN — cada tentativa gera alerta.',
+                    style: TextStyle(fontSize: 10, color: Colors.orange, height: 1.5)),
+                ],
+              ),
             ),
             const SizedBox(height: 10),
             Row(
