@@ -1,0 +1,3 @@
+<resources>
+    <string name="accessibility_description">Detecta quando um aplicativo de conteúdo adulto é aberto e bloqueia o acesso, retornando à tela inicial.</string>
+</resources>
