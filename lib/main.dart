@@ -158,21 +158,27 @@ class _HomePageState extends State<HomePage> {
   }
 
   // Envia alerta via ntfy.sh para o tópico configurado (parente/amigo)
-  Future<void> _alert(String msg) async {
+  Future<bool> _alert(String msg) async {
     try {
-      final topic = await _ch.invokeMethod<String>('alertTopic') ?? '';
-      if (topic.trim().isEmpty) return;
+      var topic = (await _ch.invokeMethod<String>('alertTopic') ?? '').trim();
+      topic = topic.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '');
+      if (topic.isEmpty) return false;
       final client = HttpClient();
       final req = await client
-          .postUrl(Uri.parse('https://ntfy.sh/${topic.trim()}'))
-          .timeout(const Duration(seconds: 5));
+          .postUrl(Uri.parse('https://ntfy.sh/$topic'))
+          .timeout(const Duration(seconds: 6));
       req.headers.set('Title', 'Bloqueador Familiar');
       req.headers.set('Priority', 'high');
       req.headers.set('Tags', 'warning');
       req.write(msg);
-      await req.close().timeout(const Duration(seconds: 5));
+      final resp = await req.close().timeout(const Duration(seconds: 6));
+      final ok = resp.statusCode >= 200 && resp.statusCode < 300;
+      await resp.drain<void>();
       client.close();
-    } catch (_) {}
+      return ok;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> _toggle() async {
@@ -417,16 +423,37 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(width: 8),
                 FilledButton.tonal(
                   onPressed: () async {
-                    await _ch.invokeMethod('setAlertTopic', {'topic': ctrl.text});
+                    final t = ctrl.text.trim().replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '');
+                    await _ch.invokeMethod('setAlertTopic', {'topic': t});
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Tópico salvo. O parente assina ele no app ntfy.')),
+                        SnackBar(content: Text(t.isEmpty
+                            ? 'Tópico vazio — digite um nome antes.'
+                            : 'Tópico "$t" salvo. O parente assina ele no app ntfy.')),
                       );
                     }
                   },
                   child: const Text('Salvar'),
                 ),
               ],
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  final ok = await _alert('✅ Teste de alerta do Bloqueador Familiar');
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(ok
+                          ? 'Alerta enviado! Confira o app ntfy do parente.'
+                          : 'Falhou — verifique o tópico salvo e a internet.')),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.send, size: 16),
+                label: const Text('Enviar alerta de teste'),
+              ),
             ),
           ],
         ),

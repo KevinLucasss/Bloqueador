@@ -101,8 +101,9 @@ class MainActivity : FlutterActivity() {
                     }
                     "alertTopic" -> result.success(prefs.getString("alert_topic", ""))
                     "setAlertTopic" -> {
-                        val t = call.argument<String>("topic") ?: ""
-                        prefs.edit().putString("alert_topic", t.trim()).apply()
+                        val t = (call.argument<String>("topic") ?: "")
+                            .trim().replace(Regex("[^a-zA-Z0-9_-]"), "")
+                        prefs.edit().putString("alert_topic", t).apply()
                         result.success(true)
                     }
                     "stats" -> result.success(mapOf(
