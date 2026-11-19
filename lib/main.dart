@@ -376,7 +376,7 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(height: 6),
             const Text(
-              'Se alguém tentar desligar a proteção ou errar o PIN, um parente ou amigo é avisado na hora.',
+              'Se alguém tentar desligar, desinstalar o app ou errar o PIN, um parente ou amigo é avisado na hora.',
               style: TextStyle(fontSize: 12, color: Colors.white60, height: 1.4),
             ),
             const SizedBox(height: 8),
