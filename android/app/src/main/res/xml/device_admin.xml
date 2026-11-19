@@ -1,14 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <device-admin xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-policies>
-        <limit-password />
-        <watch-login />
-        <reset-password />
-        <force-lock />
-        <wipe-data />
-        <expire-password />
-        <encrypted-storage />
-        <disable-camera />
-        <disable-keyguard-features />
+        <!-- Somente o necessário para o bloqueio de conteúdo:
+             VPN sempre ativa, restrições de instalação/desinstalação.
+             Sem wipe, reset de senha, câmera ou bloqueio de tela. -->
     </uses-policies>
 </device-admin>
