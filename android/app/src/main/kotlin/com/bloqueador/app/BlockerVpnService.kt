@@ -9,6 +9,7 @@ import java.io.FileOutputStream
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
+import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicLong
 
 /**
@@ -32,6 +33,9 @@ class BlockerVpnService : VpnService() {
         @Volatile var lastError: String? = null
         val blockedCount = AtomicLong(0)
         val dnsSeen = AtomicLong(0)
+        private val dnsPool = Executors.newFixedThreadPool(8) { r ->
+            Thread(r, "dns-fwd").apply { isDaemon = true }
+        }
         @Volatile var activeDnsServers = ""
 
         // DNS públicos mais usados — entram nas rotas para o túnel capturar.
@@ -392,7 +396,7 @@ class BlockerVpnService : VpnService() {
 
     private fun forwardDnsV6(pkt: ByteArray, udpOff: Int, dnsOff: Int, dnsLen: Int) {
         val payload = pkt.copyOfRange(dnsOff, dnsOff + dnsLen)
-        Thread {
+        dnsPool.execute {
             var sock: DatagramSocket? = null
             try {
                 sock = DatagramSocket()
@@ -410,7 +414,7 @@ class BlockerVpnService : VpnService() {
                         break
                     } catch (e: Exception) { /* próximo upstream */ }
                 }
-                if (respBytes == null) return@Thread
+                if (respBytes == null) return@execute
                 val reply = buildDnsReplyV6(pkt, udpOff, dnsOff, respBytes)
                 synchronized(tunOut!!) { tunOut!!.write(reply); tunOut!!.flush() }
             } catch (e: Exception) {
@@ -418,7 +422,7 @@ class BlockerVpnService : VpnService() {
             } finally {
                 try { sock?.close() } catch (_: Exception) {}
             }
-        }.apply { isDaemon = true; start() }
+        }
     }
 
     private fun buildDnsReplyV6(req: ByteArray, udpOff: Int, dnsOff: Int, dnsResp: ByteArray): ByteArray {
@@ -484,7 +488,7 @@ class BlockerVpnService : VpnService() {
 
     private fun forwardDns(pkt: ByteArray, ihl: Int, udpOff: Int, dnsOff: Int, dnsLen: Int) {
         val payload = pkt.copyOfRange(dnsOff, dnsOff + dnsLen)
-        Thread {
+        dnsPool.execute {
             var sock: DatagramSocket? = null
             try {
                 sock = DatagramSocket()
@@ -505,7 +509,7 @@ class BlockerVpnService : VpnService() {
                         break
                     } catch (e: Exception) { /* tenta próximo upstream */ }
                 }
-                if (respBytes == null || upstream == null) return@Thread
+                if (respBytes == null || upstream == null) return@execute
                 val reply = buildDnsReply(pkt, ihl, udpOff, respBytes)
                 synchronized(tunOut!!) { tunOut!!.write(reply); tunOut!!.flush() }
             } catch (e: Exception) {
@@ -513,7 +517,7 @@ class BlockerVpnService : VpnService() {
             } finally {
                 try { sock?.close() } catch (_: Exception) {}
             }
-        }.apply { isDaemon = true; start() }
+        }
     }
 
     // Monta pacote IP/UDP de resposta: troca src/dst do request e embute a

@@ -88,6 +88,15 @@ class MainActivity : FlutterActivity() {
                     "vpnError" -> result.success(BlockerVpnService.lastError)
                     "dnsSeen" -> result.success(BlockerVpnService.dnsSeen.get())
                     "activeDns" -> result.success(BlockerVpnService.activeDnsServers)
+                    "stats" -> result.success(mapOf(
+                        "running" to BlockerVpnService.running,
+                        "blocked" to BlockerVpnService.blockedCount.get(),
+                        "dnsSeen" to BlockerVpnService.dnsSeen.get(),
+                        "appBlocked" to prefs.getInt(AdultAppBlockerService.KEY_APP_BLOCKS, 0),
+                        "accOn" to isAccessibilityEnabled(),
+                        "error" to (BlockerVpnService.lastError ?: ""),
+                        "activeDns" to BlockerVpnService.activeDnsServers
+                    ))
                     "appBlockedCount" -> result.success(
                         prefs.getInt(AdultAppBlockerService.KEY_APP_BLOCKS, 0).toLong()
                     )

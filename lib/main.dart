@@ -72,18 +72,20 @@ class _HomePageState extends State<HomePage> {
     });
     if (!hasPin) _askSetupPin();
     _refresh();
-    _poll = Timer.periodic(const Duration(seconds: 2), (_) => _refresh());
+    _poll = Timer.periodic(const Duration(seconds: 5), (_) => _refresh());
   }
 
   Future<void> _refresh() async {
     try {
-      final running = await _ch.invokeMethod<bool>('isRunning') ?? false;
-      final count = await _ch.invokeMethod<int>('blockedCount') ?? 0;
-      final appCount = await _ch.invokeMethod<int>('appBlockedCount') ?? 0;
-      final acc = await _ch.invokeMethod<bool>('isAccessibilityEnabled') ?? false;
-      final err = await _ch.invokeMethod<String>('vpnError');
-      final dns = await _ch.invokeMethod<int>('dnsSeen') ?? 0;
-      final dnsList = await _ch.invokeMethod<String>('activeDns') ?? '';
+      final st = await _ch.invokeMethod<Map>('stats');
+      if (st == null) return;
+      final running = st['running'] == true;
+      final count = (st['blocked'] as num?)?.toInt() ?? 0;
+      final appCount = (st['appBlocked'] as num?)?.toInt() ?? 0;
+      final acc = st['accOn'] == true;
+      final err = (st['error'] as String?)?.isNotEmpty == true ? st['error'] as String : null;
+      final dns = (st['dnsSeen'] as num?)?.toInt() ?? 0;
+      final dnsList = (st['activeDns'] as String?) ?? '';
       if (mounted && (running != _vpnOn || count != _blocked || appCount != _appBlocked || acc != _accOn || err != _vpnError || dns != _dnsSeen || dnsList != _activeDns)) {
         setState(() { _vpnOn = running; _blocked = count; _appBlocked = appCount; _accOn = acc; _vpnError = err; _dnsSeen = dns; _activeDns = dnsList; });
       }
