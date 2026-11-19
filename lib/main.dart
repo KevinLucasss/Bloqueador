@@ -45,6 +45,7 @@ class _HomePageState extends State<HomePage> {
   String? _vpnError;
   int _dnsSeen = 0;
   String _activeDns = '';
+  String _alertTopic = '';
   Timer? _poll;
 
   @override
@@ -66,6 +67,7 @@ class _HomePageState extends State<HomePage> {
       hasPin = await _ch.invokeMethod<bool>('hasPin') ?? false;
       isOwner = await _ch.invokeMethod<bool>('isDeviceOwner') ?? false;
       _accOn = await _ch.invokeMethod<bool>('isAccessibilityEnabled') ?? false;
+      _alertTopic = await _ch.invokeMethod<String>('alertTopic') ?? '';
     } catch (_) {}
     setState(() {
       _hasPin = hasPin;
@@ -365,7 +367,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildAlertCard(ThemeData theme) {
-    final ctrl = TextEditingController();
+    final ctrl = TextEditingController(text: _alertTopic);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -424,7 +426,17 @@ class _HomePageState extends State<HomePage> {
                 FilledButton.tonal(
                   onPressed: () async {
                     final t = ctrl.text.trim().replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '');
-                    await _ch.invokeMethod('setAlertTopic', {'topic': t});
+                    try {
+                      await _ch.invokeMethod('setAlertTopic', {'topic': t});
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Erro ao salvar: $e')),
+                        );
+                      }
+                      return;
+                    }
+                    setState(() => _alertTopic = t);
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text(t.isEmpty
