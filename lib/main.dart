@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'apps_page.dart';
@@ -151,7 +152,27 @@ class _HomePageState extends State<HomePage> {
   Future<bool> _askPin() async {
     final pin = await _pinDialog(title: 'Digite o PIN para desligar');
     if (pin == null) return false;
-    return await _ch.invokeMethod<bool>('checkPin', {'pin': pin}) ?? false;
+    final ok = await _ch.invokeMethod<bool>('checkPin', {'pin': pin}) ?? false;
+    if (!ok) _alert('🚨 Tentativa de desbloqueio com PIN incorreto');
+    return ok;
+  }
+
+  // Envia alerta via ntfy.sh para o tópico configurado (parente/amigo)
+  Future<void> _alert(String msg) async {
+    try {
+      final topic = await _ch.invokeMethod<String>('alertTopic') ?? '';
+      if (topic.trim().isEmpty) return;
+      final client = HttpClient();
+      final req = await client
+          .postUrl(Uri.parse('https://ntfy.sh/${topic.trim()}'))
+          .timeout(const Duration(seconds: 5));
+      req.headers.set('Title', 'Bloqueador Familiar');
+      req.headers.set('Priority', 'high');
+      req.headers.set('Tags', 'warning');
+      req.write(msg);
+      await req.close().timeout(const Duration(seconds: 5));
+      client.close();
+    } catch (_) {}
   }
 
   Future<void> _toggle() async {
@@ -166,6 +187,7 @@ class _HomePageState extends State<HomePage> {
         return;
       }
       await _ch.invokeMethod('stopVpn');
+      _alert('⚠️ A proteção foi DESLIGADA neste aparelho');
       _refresh();
       return;
     }
@@ -313,6 +335,8 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               const SizedBox(height: 12),
+              _buildAlertCard(theme),
+              const SizedBox(height: 12),
               _buildChecklist(theme),
               const SizedBox(height: 12),
               _buildAppBlockCard(theme),
@@ -329,6 +353,60 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAlertCard(ThemeData theme) {
+    final ctrl = TextEditingController();
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.notifications_active_outlined, color: theme.colorScheme.primary),
+                const SizedBox(width: 8),
+                Text('Alertar tentativas de desbloqueio',
+                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Se alguém tentar desligar a proteção ou errar o PIN, um parente ou amigo é avisado na hora. '
+              'Para receber: instale o app "ntfy" no celular dele e assine o mesmo tópico abaixo.',
+              style: TextStyle(fontSize: 12, color: Colors.white60, height: 1.4),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: ctrl,
+                    decoration: const InputDecoration(
+                      hintText: 'Tópico secreto (ex: bloqueador-xyz123)',
+                      isDense: true,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton.tonal(
+                  onPressed: () async {
+                    await _ch.invokeMethod('setAlertTopic', {'topic': ctrl.text});
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Tópico salvo. O parente assina ele no app ntfy.')),
+                      );
+                    }
+                  },
+                  child: const Text('Salvar'),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

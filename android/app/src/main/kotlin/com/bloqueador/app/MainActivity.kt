@@ -99,6 +99,12 @@ class MainActivity : FlutterActivity() {
                         ).apply()
                         result.success(true)
                     }
+                    "alertTopic" -> result.success(prefs.getString("alert_topic", ""))
+                    "setAlertTopic" -> {
+                        val t = call.argument<String>("topic") ?: ""
+                        prefs.edit().putString("alert_topic", t.trim()).apply()
+                        result.success(true)
+                    }
                     "stats" -> result.success(mapOf(
                         "running" to BlockerVpnService.running,
                         "blocked" to BlockerVpnService.blockedCount.get(),
@@ -177,6 +183,13 @@ class MainActivity : FlutterActivity() {
                 "pinterest", "reddit", "linkedin", "kwai", "likee") -> "redes"
             has("youtube", "netflix", "twitch", "disney", "primevideo",
                 "globoplay", "crunchyroll", "spotify", "deezer") -> "streaming"
+            has("betano", "pixbet", "bet365", "sportingbet", "estrelabet",
+                "superbet", "betmgm", "betfair", "blaze", "kto",
+                "aposta", "cassino", "casino", "tigrinho", "fortune tiger",
+                "slot", "bicho", "azar", "pgsoft", "habanero") -> "apostas"
+            has("cerveja", "heineken", "skol", "brahma", "antarctica", "drink",
+                "pub", "bar", "tabac", "cigarro", "vape", "smoking", "narguile",
+                "hookah", "maconha", "cannabis", "bebida", "licor", "whisky") -> "vicios"
             has("jogo", "game", "pubg", "freefire", "roblox", "minecraft",
                 "clash", "brawl", "genshin", "candycrush") -> "jogos"
             else -> "outros"

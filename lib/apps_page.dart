@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/services.dart';
 
 class AppsPage extends StatefulWidget {
@@ -10,11 +12,29 @@ class AppsPage extends StatefulWidget {
 class _AppsPageState extends State<AppsPage> {
   static const _ch = MethodChannel('com.bloqueador.app/vpn');
 
+  Future<void> _alert(String msg) async {
+    try {
+      final topic = await _ch.invokeMethod<String>('alertTopic') ?? '';
+      if (topic.trim().isEmpty) return;
+      final client = HttpClient();
+      final req = await client
+          .postUrl(Uri.parse('https://ntfy.sh/${topic.trim()}'))
+          .timeout(const Duration(seconds: 5));
+      req.headers.set('Title', 'Bloqueador Familiar');
+      req.headers.set('Priority', 'high');
+      req.headers.set('Tags', 'warning');
+      req.write(msg);
+      await req.close().timeout(const Duration(seconds: 5));
+      client.close();
+    } catch (_) {}
+  }
+
   bool _loading = true;
   List<Map<String, String>> _apps = [];
   Set<String> _blocked = {};
   String _search = '';
   String _category = 'todas';
+  bool _pinOk = false;
 
   static const _cats = {
     'todas': 'Todas',
@@ -23,6 +43,8 @@ class _AppsPageState extends State<AppsPage> {
     'redes': 'Redes sociais',
     'streaming': 'Streaming',
     'jogos': 'Jogos',
+    'apostas': 'Apostas/Tigrinho',
+    'vicios': 'Vícios',
     'adulto': 'Adulto',
     'outros': 'Outros',
   };
@@ -49,7 +71,53 @@ class _AppsPageState extends State<AppsPage> {
     }
   }
 
+  Future<bool> _ensurePin() async {
+    if (_pinOk) return true;
+    final pin = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        final ctrl = TextEditingController();
+        return AlertDialog(
+          title: const Text('PIN de proteção'),
+          content: TextField(
+            controller: ctrl,
+            keyboardType: TextInputType.number,
+            obscureText: true,
+            maxLength: 8,
+            decoration: const InputDecoration(labelText: 'Digite o PIN para alterar bloqueios'),
+            autofocus: true,
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+            FilledButton(
+              onPressed: () async {
+                final ok = await _ch.invokeMethod<bool>('checkPin', {'pin': ctrl.text}) ?? false;
+                if (ok) {
+                  Navigator.pop(ctx, ctrl.text);
+                } else {
+                  _alert('🚨 Tentativa de alterar bloqueios com PIN incorreto');
+                  if (ctx.mounted) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      const SnackBar(content: Text('PIN incorreto — tentativa registrada.')),
+                    );
+                  }
+                }
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+    if (pin == null) return false;
+    _pinOk = true;
+    return true;
+  }
+
   Future<void> _toggle(String pkg, bool value) async {
+    if (!await _ensurePin()) return;
+    if (!mounted) return;
     setState(() {
       if (value) {
         _blocked.add(pkg);
@@ -61,6 +129,8 @@ class _AppsPageState extends State<AppsPage> {
   }
 
   Future<void> _toggleCategory(String cat, bool value) async {
+    if (!await _ensurePin()) return;
+    if (!mounted) return;
     final pkgs = _filtered(cat: cat)
         .map((a) => a['pkg']!)
         .toList();
